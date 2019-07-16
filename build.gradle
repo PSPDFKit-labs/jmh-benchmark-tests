@@ -1,0 +1,55 @@
+buildscript {
+    repositories {
+        jcenter()
+        maven {
+            url "https://plugins.gradle.org/m2/"
+        }
+    }
+    dependencies {
+        classpath "me.champeau.gradle:jmh-gradle-plugin:0.4.8"
+    }
+}
+
+plugins {
+    id 'java'
+    id "me.champeau.gradle.jmh" version "0.4.8"
+}
+
+group 'com.pspdfkit'
+version '1.0-SNAPSHOT'
+
+sourceCompatibility = 1.8
+
+repositories {
+    mavenCentral()
+}
+
+dependencies {
+    testCompile group: 'junit', name: 'junit', version: '4.12'
+    jmh 'org.openjdk.jmh:jmh-core:1.21'
+    jmh 'org.openjdk.jmh:jmh-generator-annprocess:1.21'
+}
+
+jmh {
+    warmupIterations = 5
+    iterations = 5
+    fork = 1
+    duplicateClassesStrategy = 'warn'
+}
+
+// This is useful to run a single test class from command line. 
+task benchmarkJar(type: Jar, dependsOn: jmhJar) {
+    manifest {
+        attributes 'Main-Class': 'org.openjdk.jmh.Main'
+    }
+    classifier = 'benchmark'
+    from {
+        (jmhJar.outputs.files + configurations.jmh + configurations.jmhRuntime)
+                .collect { it.isDirectory() ? it : zipTree(it) }
+    }
+}
+
+task deleteEmptyBmList(type: Delete) {
+    delete "$buildDir/jmh-generated-classes/META-INF/BenchmarkList"
+}
+jmhCompileGeneratedClasses.finalizedBy deleteEmptyBmList
